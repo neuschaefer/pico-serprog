@@ -16,7 +16,7 @@ target_sources(pico_serprog PRIVATE
         pio/pio_spi.c
         )
 
-target_link_libraries(pico_serprog PRIVATE pico_stdlib hardware_pio)
+target_link_libraries(pico_serprog PRIVATE pico_stdlib hardware_pio hardware_dma)
 pico_add_extra_outputs(pico_serprog)
 
 # enable usb output, disable uart output

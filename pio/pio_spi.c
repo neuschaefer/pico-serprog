@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
+#include <hardware/dma.h>
 #include "pio_spi.h"
 
 // Just 8 bit functions provided here. The PIO program supports any frame size
@@ -47,6 +48,30 @@ void __time_critical_func(pio_spi_read8_blocking)(const pio_spi_inst_t *spi, uin
             --rx_remain;
         }
     }
+}
+
+void pio_spi_read8_start_dma(const pio_spi_inst_t *spi, uint8_t *dst, size_t len) {
+    static const uint8_t zero = 0;
+
+    // Stop previous transfers
+    dma_channel_abort(spi->dma_chan_tx);
+    dma_channel_abort(spi->dma_chan_rx);
+
+    // TX DMA
+    dma_channel_config c = dma_channel_get_default_config(spi->dma_chan_tx);
+    channel_config_set_read_increment(&c, false);
+    channel_config_set_write_increment(&c, false);
+    channel_config_set_dreq(&c, pio_get_dreq(spi->pio, spi->sm, true));
+    channel_config_set_transfer_data_size(&c, DMA_SIZE_8);
+    dma_channel_configure(spi->dma_chan_tx, &c, &spi->pio->txf[spi->sm], &zero, len, true);
+
+    // RX DMA
+    c = dma_channel_get_default_config(spi->dma_chan_rx);
+    channel_config_set_read_increment(&c, false);
+    channel_config_set_write_increment(&c, true);
+    channel_config_set_dreq(&c, pio_get_dreq(spi->pio, spi->sm, false));
+    channel_config_set_transfer_data_size(&c, DMA_SIZE_8);
+    dma_channel_configure(spi->dma_chan_rx, &c, dst, &spi->pio->rxf[spi->sm], len, true);
 }
 
 void __time_critical_func(pio_spi_write8_read8_blocking)(const pio_spi_inst_t *spi, uint8_t *src, uint8_t *dst,

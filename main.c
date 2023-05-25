@@ -15,6 +15,7 @@
 #include "pico/stdlib.h"
 #include "pico/binary_info.h"
 #include "hardware/clocks.h"
+#include "hardware/structs/dma.h"
 #include "pio/pio_spi.h"
 #include "spi.h"
 
@@ -77,7 +78,30 @@ void putu32(uint32_t d) {
     putchar(buf[3]);
 }
 
-unsigned char write_buffer[4096];
+unsigned char buffer[4096];
+
+void transfer_pio_spi_to_stdout(const pio_spi_inst_t *spi, size_t rlen) {
+    uint32_t chunk;
+
+    for(uint32_t i = 0; i < rlen; i += sizeof(buffer)) {
+        // Start DMA transfer into buffer
+        pio_spi_read8_start_dma(spi, buffer, MIN(sizeof(buffer), rlen - i));
+
+        // Chase the DMA with USB transfers
+        for(uint32_t j = 0; j < sizeof(buffer) && i + j < rlen; j += chunk) {
+            chunk = MIN(rlen - (i + j), 128);
+
+            // Wait until enough has been written
+            while (dma_hw->ch[spi->dma_chan_rx].write_addr < (ulong)buffer + j + chunk)
+                tight_loop_contents();
+
+            // Kick off a USB transfer
+            fwrite(buffer + j, 1, chunk, stdout);
+            fflush(stdout);
+        }
+    }
+}
+
 
 void process(const pio_spi_inst_t *spi, int command) {
     switch(command) {
@@ -132,21 +156,15 @@ void process(const pio_spi_inst_t *spi, int command) {
                 uint32_t rlen = getu24();
 
                 cs_select(PIN_CS);
-                fread(write_buffer, 1, wlen, stdin);
-                pio_spi_write8_blocking(spi, write_buffer, wlen);
+                fread(buffer, 1, wlen, stdin);
+                pio_spi_write8_blocking(spi, buffer, wlen);
 
                 putchar(S_ACK);
-                uint32_t chunk;
-                char buf[128];
 
-                for(uint32_t i = 0; i < rlen; i += chunk) {
-                    chunk = MIN(rlen - i, sizeof(buf));
-                    pio_spi_read8_blocking(spi, buf, chunk);
-                    fwrite(buf, 1, chunk, stdout);
-                    fflush(stdout);
-                }
+                transfer_pio_spi_to_stdout(spi, rlen);
 
                 cs_deselect(PIN_CS);
+
             }
             break;
         case S_CMD_S_SPI_FREQ:
@@ -174,7 +192,9 @@ void process(const pio_spi_inst_t *spi, int command) {
 static const pio_spi_inst_t spi = {
     .pio = pio1,
     .sm = 0,
-    .cs_pin = PIN_CS
+    .cs_pin = PIN_CS,
+    .dma_chan_tx = 0,
+    .dma_chan_rx = 1,
 };
 static uint spi_offset;
 
