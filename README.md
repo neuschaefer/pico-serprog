@@ -1,6 +1,9 @@
-# pico-serprog
+# pico-serprog (`next` branch)
 
 This is a basic flashrom/serprog compatible SPI flash reader/writer for the Raspberry Pi Pico.
+
+_NOTE: This is a fork of pico-serprog, in which a few feature branches are
+merged. The list of branches is specified in `next.sh`._
 
 It does not require a custom version of flashrom, just drag the compiled uf2 onto your Pico and you're ready to go.
 
