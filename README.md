@@ -18,7 +18,7 @@ The default pin-out is:
 Dump a flashchip:
 
 ```
-flashrom -p serprog:dev=/dev/ttyACM0:115200,spispeed=12M -r foo.bin
+flashrom -p serprog:dev=/dev/ttyACM0,spispeed=12M -r foo.bin
 ```
 
 ## License
