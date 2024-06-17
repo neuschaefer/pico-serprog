@@ -19,13 +19,17 @@
 #include "spi.h"
 
 #define PIN_LED PICO_DEFAULT_LED_PIN
-#define PIN_MISO 4
-#define PIN_MOSI 3
-#define PIN_SCK 2
-#define PIN_CS_0 1
-#define PIN_CS_1 5
-#define PIN_CS_2 6
-#define PIN_CS_3 7
+#ifndef PIN_SCK
+# define PIN_MISO 4
+# define PIN_MOSI 3
+# define PIN_SCK 2
+#endif
+#ifndef PIN_CS_0
+# define PIN_CS_0 1
+# define PIN_CS_1 5
+# define PIN_CS_2 6
+# define PIN_CS_3 7
+#endif
 #define BUS_SPI         (1 << 3)
 #define S_SUPPORTED_BUS   BUS_SPI
 #define S_CMD_MAP ( \
